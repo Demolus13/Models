@@ -2,7 +2,6 @@ import os
 import pickle
 import streamlit as st
 from streamlit_option_menu import option_menu
-import webbrowser
 
 import pandas as pd
 from DT_RF_Models import Node, DecisionTree, RandomForest
@@ -68,8 +67,23 @@ if selected == 'Decision Tree':
     st.write('This is a Decison Tree model for Breast Cancer')
 
     # dataset link
-    if st.button('Breast Cancer Dataset'):
-        webbrowser.open_new_tab('https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic')
+    st.markdown(
+        """
+        <a href="https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic" target="_blank">
+            <button style='background-color: #262730;
+            border: 0px;
+            border-radius: 10px;
+            color: white;
+            padding: 10px 15px;
+            text-align: center;
+            text-decoration: none;
+            font-size: 16px;
+            margin-bottom: 1rem;
+            cursor: pointer;'>Breast Cancer Dataset</button>
+        </a>
+        """, 
+        unsafe_allow_html=True,
+    )
 
     # creating input fields for depth and criteria
     depth = st.slider('Depth', min_value=0, max_value=4, value=1)
@@ -350,9 +364,24 @@ if selected == 'Random Forest':
     st.write('This is a Random Forest model for Algerian Forest Fires')
 
     # dataset link
-    if st.button('Algerian Forest Fires Dataset'):
-        webbrowser.open_new_tab('https://archive.ics.uci.edu/dataset/547/algerian+forest+fires+dataset')
-    
+    st.markdown(
+        """
+        <a href="https://archive.ics.uci.edu/dataset/547/algerian+forest+fires+dataset" target="_blank">
+            <button style='background-color: #262730;
+            border: 0px;
+            border-radius: 10px;
+            color: white;
+            padding: 10px 15px;
+            text-align: center;
+            text-decoration: none;
+            font-size: 16px;
+            margin-bottom: 1rem;
+            cursor: pointer;'>Algerian Forest Fires Dataset</button>
+        </a>
+        """, 
+        unsafe_allow_html=True,
+    )
+
     # creating input fields for depth and criteria
     depth = st.slider('Depth', min_value=0, max_value=5, value=1)
     n_trees = st.slider('N Trees', min_value=1, max_value=5, value=3)
