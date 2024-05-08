@@ -1,0 +1,8 @@
+os
+pickle
+streamlit
+streamlit-option-menu
+webbrowser
+numpy
+pandas
+scipy
