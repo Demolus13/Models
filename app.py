@@ -2,6 +2,7 @@ import os
 import pickle
 import streamlit as st
 from streamlit_option_menu import option_menu
+import webbrowser
 
 import pandas as pd
 from DT_RF_Models import Node, DecisionTree, RandomForest
@@ -15,6 +16,12 @@ Models_dir = "Models"
 Models = {
     'Decision Trees': {},
     'Random Forests': {},
+    'Linear Regression': {},
+    'Logistic Regression': {},
+    'MLP Models': {},
+    'CNN Models': {},
+    'KNN Models': {},
+    'SVM Models': {},
 }
 
 for model_name in os.listdir(Models_dir):
@@ -24,6 +31,18 @@ for model_name in os.listdir(Models_dir):
             Models['Decision Trees'][model_name] = model
         elif model_name.startswith('RForest'):
             Models['Random Forests'][model_name] = model
+        elif model_name.startswith('Linear'):
+            Models['Linear Regression'][model_name] = model
+        elif model_name.startswith('Logistic'):
+            Models['Logistic Regression'][model_name] = model
+        elif model_name.startswith('MLP'):
+            Models['MLP Models'][model_name] = model
+        elif model_name.startswith('CNN'):
+            Models['CNN Models'][model_name] = model
+        elif model_name.startswith('KNN'):
+            Models['KNN Models'][model_name] = model
+        elif model_name.startswith('SVM'):
+            Models['SVM Models'][model_name] = model
 
 # sidebar for navigation
 with st.sidebar:
@@ -48,8 +67,12 @@ if selected == 'Decision Tree':
     st.title('Decision Tree Classifier')
     st.write('This is a Decison Tree model for Breast Cancer')
 
+    # dataset link
+    if st.button('Breast Cancer Dataset'):
+        webbrowser.open_new_tab('https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic')
+
     # creating input fields for depth and criteria
-    depth = st.slider('Depth', min_value=0, max_value=4, value=3)
+    depth = st.slider('Depth', min_value=0, max_value=4, value=1)
     criteria = st.selectbox('Criteria', options=['Entropy', 'Gini'])
 
     # getting the input data from the user
@@ -87,8 +110,101 @@ if selected == 'Decision Tree':
 
     st.success(f"Diagnosis: {diagnosis}")
 
+    # plot the decision tree
+    # st.write(f"Decision Tree with criteria {criteria} and depth {depth}")
+    # Models['Decision Trees'][f'DTree_{criteria}_{depth}.pkl'].plot_tree()
+
     # code block
     st.title('Notebook')
+    code = '''
+    """
+    Utility functions for the Model
+    """
+
+    def entropy(Y: pd.Series) -> float:
+        """
+        Y: pd.Series: Output values
+
+        Returns: float: Entropy
+        """
+
+        vals = Y.value_counts(normalize=True)
+        return -np.sum(xlogy(vals, vals))
+
+    def gini_index(Y: pd.Series) -> float:
+        """
+        Y: pd.Series: Output values
+
+        Returns: float: Gini Index
+        """
+
+        vals = Y.value_counts(normalize=True)
+        return 1 - np.sum(np.square(vals))
+
+    def information_gain(parent: pd.Series, left: pd.Series, right: pd.Series, criterion: str) -> float:
+        """
+        parent: pd.Series: Input parent dataset.
+        left: pd.Series: Subset of the parent dataset.
+        right: pd.Series: Subset of the parent dataset.
+
+        Returns: float: Information gain.
+        """
+        FMap = {"entropy": entropy, "gini": gini_index}
+
+        # calculate parent and child entropy
+        before_entropy = FMap[criterion](parent)
+        after_entropy = (len(left) / len(parent)) * FMap[criterion](left) + (len(right) / len(parent)) * FMap[criterion](right)
+            
+        # calculate information gain 
+        information_gain = before_entropy - after_entropy
+        return information_gain
+
+    def best_split(dataset: pd.DataFrame, num_samples: int, num_features: int, criterion: str) -> dict:
+        """
+        dataset: pd.DataFrame: The dataset to split.
+        num_samples: int: The number of samples in the dataset.
+        num_features: int: The number of features in the dataset.
+
+        Returns: dict: A dictionary with the best split.
+        """
+            
+        # Find the best split
+        best_split = {'gain': -1, 'feature': None, 'threshold': None, "left_dataset": None, "right_dataset": None}
+        for feature_index in range(num_features):
+            feature_values = dataset.iloc[:, feature_index]
+            thresholds = np.unique(feature_values)
+            for threshold in thresholds:
+                left_dataset, right_dataset = split_data(dataset, feature_index, threshold)
+                y, left_y, right_y = dataset.iloc[:, -1], left_dataset.iloc[:, -1], right_dataset.iloc[:, -1]
+                gain = information_gain(y, left_y, right_y, criterion)
+                if gain > best_split["gain"]:
+                    best_split["gain"] = gain
+                    best_split["feature"] = feature_index
+                    best_split["threshold"] = threshold
+                    best_split["left_dataset"] = left_dataset
+                    best_split["right_dataset"] = right_dataset
+        return best_split
+
+    def split_data(dataset: pd.DataFrame, feature: int, threshold: float) -> tuple:
+        """
+        dataset: pd.DataFrame: Input dataset.
+        feature: int: Index of the feature to be split on.
+        threshold: float: Threshold value to split the feature on.
+
+        Returns:
+            left_dataset: pd.DataFrame: Subset of the dataset.
+            right_dataset: pd.DataFrame: Subset of the dataset.
+        """
+        
+        # Create mask of the dataset using threshold
+        mask = (dataset.iloc[:, feature] <= threshold)
+
+        # Mask the dataset
+        left_dataset = dataset[mask]
+        right_dataset = dataset[~mask]
+        return left_dataset, right_dataset
+    '''
+    st.code(code, language='python')
     code = '''
     class Node():
         """

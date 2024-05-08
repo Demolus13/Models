@@ -4,6 +4,7 @@ Importing the necessary libraries
 
 import numpy as np
 import pandas as pd
+import streamlit as st
 
 from scipy import stats
 from scipy.special import xlogy
@@ -165,7 +166,7 @@ class DecisionTree():
         self.min_samples = min_samples
         self.max_depth = max_depth
     
-    def build_tree(self, dataset: pd.DataFrame, current_depth: int = 0):
+    def build_tree(self, dataset: pd.DataFrame, current_depth: int = 0) -> Node:
         """
         dataset: pd.DataFrame: The dataset to build the tree.
         current_depth: int: The current depth of the tree.
@@ -202,7 +203,7 @@ class DecisionTree():
         dataset = pd.concat([X, y], axis=1) 
         self.root = self.build_tree(dataset)
 
-    def predict(self, X: pd.DataFrame):
+    def predict(self, X: pd.DataFrame) -> pd.Series:
         """
         X: pd.DataFrame: The feature matrix to make predictions for.
 
@@ -213,7 +214,7 @@ class DecisionTree():
         predictions = X.apply(self.traverse_tree, axis=1, args=(self.root,))
         return predictions
     
-    def traverse_tree(self, X: pd.Series, node: Node):
+    def traverse_tree(self, X: pd.Series, node: Node) -> float:
         """
         X: pd.Series: The feature vector to predict the target value for.
         node: Node: The current node being evaluated.
@@ -240,22 +241,22 @@ class DecisionTree():
         
         if node is None:
             node = self.root
-
+        
         if node.value is not None:
-            print(f"{4*depth * '  '}Predict: {round(node.value, 3)}")
+            st.write(f"{'&nbsp;&nbsp;&nbsp;&nbsp;' * (4 * depth)}Predict: {round(node.value, 3)}")
         else:
-            print(f"{4*depth * '  '}?(column {node.feature} <= {round(node.threshold, 3)})")
+            st.write(f"{'&nbsp;&nbsp;&nbsp;&nbsp;' * (4 * depth)}?(column {node.feature} <= {round(node.threshold, 3)})")
             self.plot_tree(node.left, depth + 1)
             self.plot_tree(node.right, depth + 1)
 
 class RandomForest():
     """
-    A decision tree classifier/regressor.
+    A Random Forest classifier/regressor.
     """
 
     def __init__(self, type: str, criterion: str = 'entropy', n_trees: int = 2, min_samples: int = 2, max_depth: int = 2):
         """
-        Constructor for RandomForest class.
+        Constructor for Random Forest class.
 
         type: string: The type of the decision tree.
         criterion: string: The criterion used to split nodes.
