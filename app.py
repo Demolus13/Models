@@ -606,9 +606,9 @@ if selected == 'Random Forest':
                 n_plot = min(n_plot, len(self.trees))
 
             for i in range(n_plot):
-                print(f"Decision Tree {i}\n")
+                print(f"Decision Tree {i}\\n")
                 self.trees[i].plot_tree()
-                print("\n------------------------------------------------------------\n")
+                print("\\n------------------------------------------------------------\\n")
     '''
     st.code(code, language='python')
 
