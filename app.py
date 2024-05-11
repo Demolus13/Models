@@ -740,7 +740,7 @@ if selected == 'Linear Regression':
                 # Print the cost
                 if print_cost and (i+1) % 100 == 0:
                     print(f'Cost at epoch {i+1}: {round(cost.item(), 3)}')
-                    print("\n------------------------------------------------------------\n")
+                    print("\\n------------------------------------------------------------\\n")
 
             return Cost
         
