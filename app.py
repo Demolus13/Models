@@ -1,10 +1,14 @@
 import os
 import pickle
+import torch
 import streamlit as st
 from streamlit_option_menu import option_menu
 
+import numpy as np
 import pandas as pd
+from sklearn import preprocessing
 from DT_RF_Models import Node, DecisionTree, RandomForest
+from LR_LR_Models import LinearRegression
 
 # Set page configuration
 st.set_page_config(page_title="ML Interactive Models",
@@ -25,12 +29,14 @@ Models = {
 
 for model_name in os.listdir(Models_dir):
     with open(os.path.join(Models_dir, model_name), 'rb') as file:
-        model = pickle.load(file)
         if model_name.startswith('DTree'):
+            model = pickle.load(file)
             Models['Decision Trees'][model_name] = model
         elif model_name.startswith('RForest'):
+            model = pickle.load(file)
             Models['Random Forests'][model_name] = model
         elif model_name.startswith('Linear'):
+            model = LinearRegression.load_model(file.name) if model_name.endswith('.pth') else pickle.load(file)
             Models['Linear Regression'][model_name] = model
         elif model_name.startswith('Logistic'):
             Models['Logistic Regression'][model_name] = model
@@ -382,7 +388,7 @@ if selected == 'Random Forest':
         unsafe_allow_html=True,
     )
 
-    # creating input fields for depth and criteria
+    # creating input fields for depth, n_trees and criteria
     depth = st.slider('Depth', min_value=0, max_value=5, value=1)
     n_trees = st.slider('N Trees', min_value=1, max_value=5, value=3)
     criteria = st.selectbox('Criteria', options=['Entropy', 'Gini'])
@@ -618,41 +624,63 @@ if selected == 'Linear Regression':
 
     # page title
     st.title('Linear Regression')
-    st.write('This is a Linear Regression model for Diabetes Prediction')
+    st.write('This is a Linear Regression model for MPG Prediction')
+
+    # dataset link
+    st.markdown(
+        """
+        <a href="https://archive.ics.uci.edu/dataset/9/auto+mpg" target="_blank">
+            <button style='background-color: #262730;
+            border: 0px;
+            border-radius: 10px;
+            color: white;
+            padding: 10px 15px;
+            text-align: center;
+            text-decoration: none;
+            font-size: 16px;
+            margin-bottom: 1rem;
+            cursor: pointer;'>Auto MPG Dataset</button>
+        </a>
+        """, 
+        unsafe_allow_html=True,
+    )
+
+    # creating input fields for learning rate and epochs
+    lr = st.select_slider('Learning rate', options=[0.001, 0.01, 0.1], value=0.01)
+    epochs = st.select_slider('Epochs', options=list(range(10, 101, 10)), value=70)
 
     # getting the input data from the user
+    user_input =  ['displacement', 'cylinders', 'horsepower', 'weight', 'acceleration', 'model_year', 'origin']
+
     col1, col2, col3 = st.columns(3)
     with col1:
-        Pregnancies = st.text_input('Number of Pregnancies')
+        user_input[0] = st.text_input('Displacement (m)', '150')
     with col2:
-        Glucose = st.text_input('Glucose Level')
+        user_input[1] = st.text_input('Cylinders (unit)', '6')
     with col3:
-        BloodPressure = st.text_input('Blood Pressure value')
+        user_input[2] = st.text_input('Horsepower (Watts)', '100')
     with col1:
-        SkinThickness = st.text_input('Skin Thickness value')
+        user_input[3] = 2.204*float(st.text_input('Weight (Kg)', '1300'))
     with col2:
-        Insulin = st.text_input('Insulin Level')
+        user_input[4] = st.text_input('Acceleration (0-100Km/h in sec)', '15')
     with col3:
-        BMI = st.text_input('BMI value')
+        user_input[5] = st.text_input('Model Year (1970 - 1982)', '76')
     with col1:
-        DTreePedigreeFunction = st.text_input('DTree Pedigree Function value')
-    with col2:
-        Age = st.text_input('Age of the Person')
-
+        origin = {'USA': 1, 'Europe': 2, 'Asia': 3}
+        user_input[6] = origin[st.text_input('Origin (USA, Europe, Asia)', 'Asia')]
 
     # code for Prediction
-    diagnosis = ''
+    predict = ''
 
     # creating a button for Prediction
     if st.button('Predict'):
         user_input = pd.DataFrame([float(x) for x in user_input]).T
-        prediction = Models['Decision Trees'][f'DTree_{criteria}_{depth}.pkl'].predict(user_input)
-        if prediction[0] == 1:
-            diagnosis = 'Malignant'
-        else:
-            diagnosis = 'Benign'
+        user_input = Models['Linear Regression']['Linear_StandardScaler.pkl'].transform(user_input)
+        user_input = torch.tensor(user_input, dtype=torch.float32)
+        predict = Models['Linear Regression'][f'Linear_{lr}_{epochs}.pth'].predict(user_input).squeeze()
+        predict = "{:.1f}".format(predict)
 
-    st.success(f"Prediction: {diagnosis}")
+    st.success(f"Prediction: {predict}")
 
     # code block
     st.title('Notebook')
