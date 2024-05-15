@@ -56,11 +56,11 @@ with st.sidebar:
                                'Decision Tree',
                                'Random Forest',
                                'Linear Regression',
-                               'Logistic Regression',
-                               'MLP Model',
-                               'CNN Model',
-                               'KNN Model',
-                               'SVM Model',
+                            #    'Logistic Regression',
+                            #    'MLP Model',
+                            #    'CNN Model',
+                            #    'KNN Model',
+                            #    'SVM Model',
                             ],
                            default_index=0)
 
