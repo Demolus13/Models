@@ -1,14 +1,18 @@
 import os
 import pickle
 import torch
+from torchtext.data.utils import get_tokenizer
+
 import streamlit as st
 from streamlit_option_menu import option_menu
 
 import numpy as np
 import pandas as pd
+import string
 from sklearn import preprocessing
 from DT_RF_Models import Node, DecisionTree, RandomForest
 from LR_LR_Models import LinearRegression
+from LSTM_Models import MLP
 
 # Set page configuration
 st.set_page_config(page_title="ML Interactive Models",
@@ -21,7 +25,7 @@ Models = {
     'Random Forests': {},
     'Linear Regression': {},
     'Logistic Regression': {},
-    'MLP Models': {},
+    'LSTM Models': {},
     'CNN Models': {},
     'KNN Models': {},
     'SVM Models': {},
@@ -40,8 +44,9 @@ for model_name in os.listdir(Models_dir):
             Models['Linear Regression'][model_name] = model
         elif model_name.startswith('Logistic'):
             Models['Logistic Regression'][model_name] = model
-        elif model_name.startswith('MLP'):
-            Models['MLP Models'][model_name] = model
+        elif model_name.startswith('LSTM'):
+            model = MLP.load_model(file.name) if model_name.endswith('.pth') else pickle.load(file)
+            Models['LSTM Models'][model_name] = model
         elif model_name.startswith('CNN'):
             Models['CNN Models'][model_name] = model
         elif model_name.startswith('KNN'):
@@ -57,7 +62,7 @@ with st.sidebar:
                                'Random Forest',
                                'Linear Regression',
                             #    'Logistic Regression',
-                            #    'MLP Model',
+                               'MLP Models',
                             #    'CNN Model',
                             #    'KNN Model',
                             #    'SVM Model',
@@ -836,47 +841,179 @@ if selected == 'MLP Models':
 
     # page title
     st.title('Multi Layer Perceptron Models')
-    st.write('This is a Decison Tree model for Diabetes Prediction')
+    st.write('This is a variation of MLPs for Next Word Prediction')
+
+    # creating input fields for learning rate and epochs
+    block_size = st.select_slider('Block Size', options=[2, 4, 8, 16, 32], value=4)
+    emb_dim = st.select_slider('Embedding Dimensions', options=[2, 4, 8, 16, 32], value=16)
+    context = st.select_slider('Context Length', options=range(0, 1001), value=100)
+    corpusOptions = ['Start-ups', 'Wikipedia']
+    corpus = st.selectbox('Select a corpus', corpusOptions)
+
+    # getting encodings and decodings
+    model = Models['LSTM Models'][f'LSTM_{corpus}_{block_size}_{emb_dim}.pth']
+    encodings = Models['LSTM Models'][f'LSTM_{corpus}_encodings.pkl']
+    decodings = Models['LSTM Models'][f'LSTM_{corpus}_decodings.pkl']
 
     # getting the input data from the user
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        Pregnancies = st.text_input('Number of Pregnancies')
-    with col2:
-        Glucose = st.text_input('Glucose Level')
-    with col3:
-        BloodPressure = st.text_input('Blood Pressure value')
-    with col1:
-        SkinThickness = st.text_input('Skin Thickness value')
-    with col2:
-        Insulin = st.text_input('Insulin Level')
-    with col3:
-        BMI = st.text_input('BMI value')
-    with col1:
-        DTreePedigreeFunction = st.text_input('DTree Pedigree Function value')
-    with col2:
-        Age = st.text_input('Age of the Person')
+    input_text = st.text_area('Enter your Text:')
 
+    # Initialize the tokenizer
+    tokenizer = get_tokenizer('basic_english')
+    input_tokens = [tkn for tkn in tokenizer(input_text) if tkn]
 
-    # code for Prediction
-    diagnosis = ''
 
     # creating a button for Prediction
     if st.button('Predict'):
-        user_input = pd.DataFrame([float(x) for x in user_input]).T
-        prediction = Models['Decision Trees'][f'DTree_{criteria}_{depth}.pkl'].predict(user_input)
-        if prediction[0] == 1:
-            diagnosis = 'Malignant'
-        else:
-            diagnosis = 'Benign'
+        output_text = input_text
 
-    st.success(f"Prediction: {diagnosis}")
+        # Process the input
+        if len(input_tokens) > model.block_size:
+            input_tokens = input_tokens[-model.block_size:]
+        elif len(input_tokens) < model.block_size:
+            input_tokens = ['<unk>'] * (model.block_size - len(input_tokens)) + input_tokens
+        input_encoded = torch.tensor([encodings.get(token, encodings['<unk>']) for token in input_tokens])
+
+        # Create a placeholder for the output text
+        st.write('Final Generated Text:')
+        output_placeholder = st.empty()
+
+        for token in model.predict(input_encoded, decodings, context):
+            if token != '<unk>':
+                if token in string.punctuation:
+                    output_text += token
+                else:
+                    output_text += ' ' + token
+            
+            output_placeholder.write(output_text)
 
     # code block
     st.title('Notebook')
     code = '''
-    def hello():
-        print("Hello, Streamlit!")
+    class LSTM(nn.Module):
+        """
+        A Long Short Term Memory.
+        """
+
+        def __init__(self, block_size: int, vocab_size: int, emb_dim: int, random_state: int = None):
+            """
+            Constructor for Long Short Term Memory.
+
+            block_size: int: input block size
+            vocab_size: int: vocabulary of the embedded words
+            emd_dim: int: embedding dimension of the characters
+            random_state: int: random state for reproducibility
+            """
+
+            super(MLP, self).__init__()
+            if random_state is not None:
+                torch.manual_seed(random_state)
+            self.block_size = block_size
+            self.vocab_size = vocab_size
+            self.emb_dim = emb_dim
+            self.embeddings = nn.Sequential(
+                nn.Embedding(vocab_size, emb_dim),
+                nn.Flatten()
+            )
+            self.layers = nn.Sequential(
+                nn.Linear(block_size * emb_dim, 256),
+                nn.SiLU(),
+                nn.Linear(256, 32),
+                nn.SiLU(),
+                nn.Linear(32, vocab_size)
+            )
+
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
+            """
+            x: torch.Tensor: The input tensor.
+            """
+
+            x = self.embeddings(x)
+            x = self.layers(x)
+            return x
+
+        def fit(self, X: torch.Tensor, y: torch.Tensor, epochs: int = 1000, batch_size: int = 4096, learning_rate: float = 0.01, print_cost: bool = False):
+            """
+            X: torch.Tensor: The input tensor
+            y: torch.Tensor: The target tensor
+            epochs: int: The number of epochs
+            batch_size: int: The batch size while applying mini-batch gradient descent
+            learning_rate: float: learning rate of the optimizer
+            print_cost: bool: Whether to print the cost or not
+            """
+            self.lr = learning_rate
+
+            X, y = X.reshape(-1, self.block_size).to(device), y.reshape(-1).to(device)
+            dataset = TensorDataset(X, y)
+            dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+            criterion = nn.CrossEntropyLoss()
+            optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+
+            Losses = []
+            for i in range(epochs):
+                for batch_X, batch_y in dataloader:
+                    # Forward pass
+                    predictions = self.forward(batch_X)
+                    loss = criterion(predictions, batch_y)
+                    Losses.append(loss.item())
+
+                    # Backward pass
+                    loss.backward()
+                    optimizer.step()
+                    optimizer.zero_grad()
+
+                # Print the cost
+                if print_cost and (i+1) % 10 == 0:
+                    print(f'Loss at epoch {i+1}: {loss.item():.3f}')
+                    print("\\n------------------------------------------------------------\\n")
+
+            return Losses
+
+        def predict(self, X: torch.Tensor, decodings: dict, context_len: int):
+            """
+            X: torch.Tensor: The input tensor
+            decodings: dict: The dictionary containing decoding of the characters
+            context_len: int: The length of the context
+            """
+
+            X = X.reshape(1, self.block_size).to(device)
+
+            for _ in range(context_len):
+                y_pred = self.forward(X)
+                id_pred = torch.distributions.Categorical(logits=y_pred).sample().item()
+                decode = decodings[id_pred]
+                X = torch.cat((X[:, 1:], torch.tensor([[id_pred]], device=device)), 1)
+                yield decode
+
+        def save_model(self, path):
+            """
+            Save the model parameters.
+
+            path: str: The path where the model parameters should be saved.
+            """
+
+            model_info = {
+                'block_size': self.block_size,
+                'vocab_size': self.vocab_size,
+                'emb_dim': self.emb_dim,
+                'state_dict': self.state_dict()
+            }
+
+            torch.save(model_info, path)
+
+        @staticmethod
+        def load_model(path):
+            """
+            Load the model parameters.
+
+            path: str: The path from where the model parameters should be loaded.
+            """
+
+            model_info = torch.load(path, map_location=torch.device('cpu'))
+            model = MLP(block_size=model_info['block_size'], vocab_size=model_info['vocab_size'], emb_dim=model_info['emb_dim'])
+            model.load_state_dict(model_info['state_dict'])
+            return model
     '''
     st.code(code, language='python')
 
