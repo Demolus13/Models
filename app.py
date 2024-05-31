@@ -2,17 +2,21 @@ import os
 import pickle
 import torch
 from torchtext.data.utils import get_tokenizer
+from torchvision.transforms import ToTensor, ToPILImage
 
 import streamlit as st
 from streamlit_option_menu import option_menu
+from streamlit_image_comparison import image_comparison
 
 import numpy as np
 import pandas as pd
 import string
+from PIL import Image
 from sklearn import preprocessing
 from DT_RF_Models import Node, DecisionTree, RandomForest
 from LR_LR_Models import LinearRegression
 from LSTM_Models import MLP
+from KNN_Models import KMeans
 
 # Set page configuration
 st.set_page_config(page_title="ML Interactive Models",
@@ -58,13 +62,13 @@ for model_name in os.listdir(Models_dir):
 with st.sidebar:
     selected = option_menu('ML Models',
                            [
+                               'MLP Models',
+                               'KNN Models',
                                'Decision Tree',
                                'Random Forest',
                                'Linear Regression',
                             #    'Logistic Regression',
-                               'MLP Models',
                             #    'CNN Model',
-                            #    'KNN Model',
                             #    'SVM Model',
                             ],
                            default_index=0)
@@ -1072,48 +1076,96 @@ if selected == 'CNN Models':
 if selected == 'KNN Models':
 
     # page title
-    st.title('K Nearest Neighbors Models')
-    st.write('This is a Decison Tree model for Diabetes Prediction')
+    st.title('K Means Models')
+    st.write('Image Clustering using KMeans Algorithm')
 
     # getting the input data from the user
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        Pregnancies = st.text_input('Number of Pregnancies')
-    with col2:
-        Glucose = st.text_input('Glucose Level')
-    with col3:
-        BloodPressure = st.text_input('Blood Pressure value')
-    with col1:
-        SkinThickness = st.text_input('Skin Thickness value')
-    with col2:
-        Insulin = st.text_input('Insulin Level')
-    with col3:
-        BMI = st.text_input('BMI value')
-    with col1:
-        DTreePedigreeFunction = st.text_input('DTree Pedigree Function value')
-    with col2:
-        Age = st.text_input('Age of the Person')
+    clusters = st.slider('Number of Clusters', min_value=2, max_value=32, value=5)
+    image = st.file_uploader('Upload an Image:', type=['jpg', 'jpeg'])
 
+    # initializing the model
+    model = KMeans(n_clusters = clusters)
+    
+    if st.button('Cluster the Image') and image is not None:
+        image = Image.open(image).convert('RGB')
+        T_image = ToTensor()(image)
+        model.fit(T_image.reshape(-1, 3).float())
 
-    # code for Prediction
-    diagnosis = ''
+        # get the labels and the segmented image
+        labels = model.predict(T_image.reshape(-1, 3).float())
+        segmented_image = ToPILImage()(torch.stack([model.centroids[i] for i in labels]).view(T_image.shape))
 
-    # creating a button for Prediction
-    if st.button('Predict'):
-        user_input = pd.DataFrame([float(x) for x in user_input]).T
-        prediction = Models['Decision Trees'][f'DTree_{criteria}_{depth}.pkl'].predict(user_input)
-        if prediction[0] == 1:
-            diagnosis = 'Malignant'
-        else:
-            diagnosis = 'Benign'
-
-    st.success(f"Prediction: {diagnosis}")
+        # display the images
+        image_comparison(
+            img1=image,
+            img2=segmented_image,
+            label1='Original Image',
+            label2='Clustered Image',
+        )
 
     # code block
     st.title('Notebook')
     code = '''
-    def hello():
-        print("Hello, Streamlit!")
+    class KMeans:
+        """
+        A KMeans clustering algorithm.
+        """
+        def __init__(self, n_clusters: int = 3):
+            """
+            Constructor for KMeans.
+
+            n_clusters: int: The number of clusters.
+            """
+            self.n_clusters = n_clusters
+            self.centroids = []
+
+        def fit(self, X : torch.Tensor, max_iter : int = 100, tol : float = 1e-4):
+            """
+            X: torch.Tensor: The data to cluster.
+            max_iter: int: The maximum number of iterations.
+            tol: float: The tolerance for convergence.
+            """
+
+            X = X.to(device)
+            self.findCenters(X)
+            
+            for _ in range(max_iter):
+                distances = torch.cdist(X, torch.stack(self.centroids))
+                labels = torch.argmin(distances, dim=1)
+
+                centroids = []
+                for i in range(self.n_clusters):
+                    if (labels == i).any():
+                        centroids.append(X[labels == i].mean(dim=0))
+                    else:
+                        centroids.append(X[np.random.randint(0, X.shape[0])])
+
+                if torch.allclose(torch.stack(centroids), torch.stack(self.centroids), atol=tol):
+                    break
+                
+                self.centroids = centroids
+
+        def predict(self, X):
+            """
+            X: torch.Tensor: The data to cluster.
+
+            Returns: torch.Tensor: The cluster labels.
+            """
+
+            X = X.to(device)
+            distances = torch.cdist(X, torch.stack(self.centroids))
+            return torch.argmin(distances, dim=1)
+
+        def findCenters(self, X):
+            """
+            X: torch.Tensor: The data to cluster.
+            """
+
+            self.centroids = [X[np.random.randint(0, X.shape[0])]]
+            
+            for _ in range(self.n_clusters - 1):
+                distances = torch.sum(torch.stack([torch.norm(X - c, dim=1) for c in self.centroids]), dim=0)
+                self.centroids.append(X[torch.argmax(distances)])
     '''
     st.code(code, language='python')
 

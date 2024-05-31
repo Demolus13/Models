@@ -6,3 +6,5 @@ scipy
 torch
 torchtext
 scikit-learn
+torchvision
+Pillow
