@@ -2,9 +2,10 @@ streamlit
 streamlit-option-menu
 numpy
 pandas
+matplotlib
 scipy
+scikit-learn
 torch
 torchtext
-scikit-learn
 torchvision
 Pillow

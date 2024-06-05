@@ -10,9 +10,13 @@ from streamlit_image_comparison import image_comparison
 
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+
 import string
 from PIL import Image
 from sklearn import preprocessing
+from sklearn.manifold import TSNE
+
 from DT_RF_Models import Node, DecisionTree, RandomForest
 from LR_LR_Models import LinearRegression
 from LSTM_Models import MLP
@@ -890,6 +894,23 @@ if selected == 'MLP Models':
                     output_text += ' ' + token
             
             output_placeholder.write(output_text)
+
+    # Plot the embeddings
+    start, end = st.slider('Embedding Range', 0, len(encodings.keys()), (300, 500))
+
+    if st.button('Plot Embeddings'):
+        emb_weights = model.embeddings[0].weight.detach().numpy()
+
+        tsne = TSNE(n_components=2)
+        emb_weights_2d = tsne.fit_transform(emb_weights)
+
+        fig, ax = plt.subplots()
+        for i, label in enumerate(list(encodings.keys())[start:end]):
+            ax.scatter(emb_weights_2d[i, 0], emb_weights_2d[i, 1], color='#618930', s=15)
+            ax.text(emb_weights_2d[i, 0], emb_weights_2d[i, 1], label, fontsize=8)
+        ax.axis('off')
+        st.pyplot(fig)
+
 
     # code block
     st.title('Notebook')
