@@ -1094,7 +1094,7 @@ if selected == 'KNN Models':
         # get the labels and the segmented image
         labels = model.predict(T_image.reshape(-1, 3).float())
         segmented_image = ToPILImage()(torch.stack([model.centroids[i] for i in labels]).view(T_image.shape))
-
+        
         # display the images
         image_comparison(
             img1=image,
