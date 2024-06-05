@@ -983,11 +983,13 @@ if selected == 'MLP Models':
 
             X = X.reshape(1, self.block_size).to(device)
 
-            for _ in range(context_len):
+            i = 0
+            while i <= context_len or decode != '.':
                 y_pred = self.forward(X)
                 id_pred = torch.distributions.Categorical(logits=y_pred).sample().item()
                 decode = decodings[id_pred]
                 X = torch.cat((X[:, 1:], torch.tensor([[id_pred]], device=device)), 1)
+                i += 1
                 yield decode
 
         def save_model(self, path):
