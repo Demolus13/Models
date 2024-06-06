@@ -855,7 +855,7 @@ if selected == 'MLP Models':
     block_size = st.select_slider('Block Size', options=[2, 4, 8, 16, 32], value=4)
     emb_dim = st.select_slider('Embedding Dimensions', options=[2, 4, 8, 16, 32], value=16)
     context = st.select_slider('Context Length', options=range(0, 1001), value=100)
-    corpusOptions = ['Start-ups', 'Wikipedia']
+    corpusOptions = ['Start-ups', 'Wikipedia', 'Leo_Tolstoy']
     corpus = st.selectbox('Select a corpus', corpusOptions)
 
     # getting encodings and decodings
@@ -869,7 +869,6 @@ if selected == 'MLP Models':
     # Initialize the tokenizer
     tokenizer = get_tokenizer('basic_english')
     input_tokens = [tkn for tkn in tokenizer(input_text) if tkn]
-
 
     # creating a button for Prediction
     if st.button('Predict'):
